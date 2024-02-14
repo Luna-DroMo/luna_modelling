@@ -1,0 +1,52 @@
+model {
+
+    # Hyperpriors for subject-specific random effects
+    alpha_subject_sd ~ dgamma(0.5, 0.05)
+    phi1_subject_sd ~ dgamma(0.5, 0.05)
+    phi2_subject_sd ~ dgamma(0.5, 0.05)
+
+    # Subject-specific random effects
+    for (i in 1:N) {
+        alpha_subject[i] ~ dnorm(0, alpha_subject_sd)
+        phi1_subject[i] ~ dnorm(0, phi1_subject_sd)
+        phi2_subject[i] ~ dnorm(0, phi2_subject_sd)
+    }
+
+    tau ~ dgamma(0.5, 0.05)
+
+    # Prior for the latent factor
+    for (t in 1:T) {
+        for (i in 1:N) {
+            h[i, t] ~ dnorm(0, 1)  # Assuming a normal distribution for the latent factor
+        }
+    }
+
+    # Priors for regression parameters
+    for (i in 1:N) {
+        beta1[i] ~ dnorm(0, 0.00000001)  # Setting beta1 to zero #1
+        beta2[i] ~ dnorm(0, 0.1)  # 3.52
+        beta3[i] ~ dnorm(0, 0.1)  # -2
+    }
+
+    # Initialize observed variables
+    for (i in 1:N) {
+        observed_variable_1[i, 1] ~ dnorm(beta1[i] * h[i, 1], 1)
+        observed_variable_2[i, 1] ~ dnorm(beta2[i] * h[i, 1], 1)
+        observed_variable_3[i, 1] ~ dnorm(beta3[i] * h[i, 1], 1)
+    }
+
+    # Likelihood of observed variables given the latent factor and time dependency
+    for (t in 2:T) {
+        for (i in 1:N) {
+            observed_variable_1[i, t] ~ dnorm(beta1[i] * h[i, t] + phi1_subject[i] * h[i, t] + phi2_subject[i] * h[i, t - 1], 1)
+            observed_variable_2[i, t] ~ dnorm(beta2[i] * h[i, t] + phi1_subject[i] * h[i, t] + phi2_subject[i] * h[i, t - 1], 1)
+            observed_variable_3[i, t] ~ dnorm(beta3[i] * h[i, t] + phi1_subject[i] * h[i, t] + phi2_subject[i] * h[i, t - 1], 1)
+
+            # Wellbeing is a moving average of latent h(ealthy lifestyle)
+            mu[i, t] =  alpha_subject[i] + phi1_subject[i] * h[i, t] + phi2_subject[i] * h[i, t - 1]
+
+            # Likelihood for regression model
+            y[i, t] ~ dnorm(mu[i, t], tau)
+        }
+    }
+}
