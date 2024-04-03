@@ -1,4 +1,5 @@
 import numpy as np
+from model_settings import *
 
 class KalmanFilter(object):
     def __init__(self, F = None, B = None, H = None, Q = None, R = None, P = None, x0 = None):
@@ -6,7 +7,7 @@ class KalmanFilter(object):
         if(F is None or H is None):
             raise ValueError("Set proper system dynamics.")
 
-        self.n = F.shape[1]
+        self.n = F.shape[1] # Steps ahead
         self.m = H.shape[1]
 
         self.F = F
@@ -15,10 +16,12 @@ class KalmanFilter(object):
         self.Q = np.eye(self.n) if Q is None else Q
         self.R = np.eye(self.n) if R is None else R
         self.P = np.eye(self.n) if P is None else P
+        # self.x is the state
         self.x = np.zeros((self.n, 1)) if x0 is None else x0
-        self.predictions = np.array([])
+        
+    
 
-    def predict(self, u = 0):
+    def predict(self,  u = 0):
         self.x = self.F @ self.x + self.B + u
         self.P = self.F @ self.P @ self.F.T + self.Q
         return self.x, self.P
@@ -33,30 +36,39 @@ class KalmanFilter(object):
 
     def forward(self, observations):
         # Runs the forward algorithm based on observations
-        self.predictions_state = []
-        self.predictions_obs = []
-        self.predictions_cov = []        
-
-        for z in observations.T:
-            if np.isnan(z).any():
-                if not self.predictions_state:  # If the first observation is missing, use an arbitrary value
-                    z = np.array([[2], [2], [2]])
-            else:  
-                expected_mean = np.random.normal(self.predictions_state[-1], self.predictions_cov[-1]) # sampling from the last observed step
-                z = self.H @ expected_mean #from latent to observed state
-
-            z = z.reshape(3,1)
-            self.predictions_obs.append(self.H @ self.predict()[0])
-            self.predictions_state.append(self.predict()[0])
-            self.predictions_cov.append(self.predict()[1])
-            self.update(z)
         
-        return self.predictions_state, self.predictions_cov, self.predictions_obs
+
+        z = observations
+        
+        
+        predictions_state = [self.x]
+        predictions_obs = []
+        predictions_cov = [self.P]
+        
+        for z in observations:
+            z = z.reshape(3,1)
+            if np.isnan(z).any():# all the missing values
+                
+                if not predictions_state: #if predictions are empty, meaning that the first observation is empty i.e. the first va
+                    z = np.array([2,2,2]).reshape(3,1)
+                else:
+                    expected_mean = np.random.normal(predictions_state[-1],predictions_cov[-1]) # sampling from the last observed step
+                    z = H @ expected_mean #from latent to observed state
+
+            self.update(z)
+            predictions_dummy, prediction_dummy_cov = self.predict()
+            predictions_obs.append(H @ predictions_dummy)
+            predictions_state.append(predictions_dummy)
+            predictions_cov.append(prediction_dummy_cov)
+            
+            
+        return predictions_state, predictions_cov, predictions_obs
     
-    def rts_smoother(self, predictions_state, predictions_cov):
-        predictions_state = np.array(predictions_state)
-        predictions_cov = np.array(predictions_cov)
-        n, dim_x, _ = predictions_state.shape   
+    def smooth(self, predictions_state, predictions_cov):
+
+        
+        n, dim_x, _ = predictions_state.shape
+        
         # RTS smoother gain
         K = np.zeros((n,dim_x,dim_x))
         x_smooth = np.zeros((n,dim_x,1))
@@ -72,4 +84,7 @@ class KalmanFilter(object):
             x_smooth[k] = predictions_state[k] + np.dot(K[k], x_smooth[k+1] - np.dot(self.F, predictions_state[k]))
             P_smooth[k] = predictions_cov[k] + np.dot(np.dot(K[k], P_smooth[k+1] - P_pred), K[k].T)
         
-        return x_smooth, P_smooth, K
+        return x_smooth, P_smooth, K #    -> what do we do with K?
+        
+
+model = KalmanFilter(F = F, H = H, Q = Q, R = R, x0 = x0)
