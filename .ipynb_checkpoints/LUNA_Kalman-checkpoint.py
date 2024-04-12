@@ -1,5 +1,4 @@
 import numpy as np
-from model_settings import *
 
 class KalmanFilter(object):
     def __init__(self, F = None, B = None, H = None, Q = None, R = None, P = None, x0 = None):
