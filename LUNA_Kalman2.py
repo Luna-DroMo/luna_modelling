@@ -21,14 +21,14 @@ class KalmanFilter(object):
     
 
     def predict(self,  u = 0):
-        self.x = self.F @ self.x + self.B + u
+        self.x = self.F @ self.x # + self.B @ u
         self.P = self.F @ self.P @ self.F.T + self.Q
         return self.x, self.P
 
     def update(self, z):
         v = np.random.multivariate_normal(np.zeros(self.R.shape[0]), self.R).reshape((self.m,1))
         v[25:] = 0 # Set measurement noise of t0 data to 0.
-        y = z - self.H @ self.x + v
+        y = z - self.H @ self.x # Estimated Z vs observed Z
         S = self.R + self.H @ self.P @ self.H.T
         K = self.P @ self.H.T @ np.linalg.inv(S)
         self.x = self.x + K @ y
