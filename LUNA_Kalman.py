@@ -1,7 +1,7 @@
 import numpy as np
 
 class KalmanFilter(object):
-    def __init__(self, F = None, B = None, H = None, Q = None, R = None, P = None, x0 = None):
+    def __init__(self,  F = None, B = None, H = None, Q = None, R = None, P = None, x0 = None):
 
         if(F is None or H is None):
             raise ValueError("Set proper system dynamics.")
@@ -56,7 +56,7 @@ class KalmanFilter(object):
 
             self.update(z)
             predictions_dummy, prediction_dummy_cov = self.predict()
-            predictions_obs.append(H @ predictions_dummy)
+            predictions_obs.append(self.H @ predictions_dummy)
             predictions_state.append(predictions_dummy)
             predictions_cov.append(prediction_dummy_cov)
             
@@ -84,6 +84,4 @@ class KalmanFilter(object):
             P_smooth[k] = predictions_cov[k] + np.dot(np.dot(K[k], P_smooth[k+1] - P_pred), K[k].T)
         
         return x_smooth, P_smooth, K #    -> what do we do with K?
-        
-
-model = KalmanFilter(F = F, H = H, Q = Q, R = R, x0 = x0)
+x

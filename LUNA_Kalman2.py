@@ -1,13 +1,13 @@
 import numpy as np
 
 class KalmanFilter(object):
-    def __init__(self, i):
+    def __init__(self,  F = None, B = None, H = None, Q = None, R = None, P = None, x0 = None):
 
         if(F is None or H is None):
             raise ValueError("Set proper system dynamics.")
 
         self.n = F.shape[1] # Steps ahead
-        self.m = H.shape[1]
+        self.m = H.shape[0]
 
         self.F = F
         self.H = H
@@ -26,7 +26,9 @@ class KalmanFilter(object):
         return self.x, self.P
 
     def update(self, z):
-        y = z - self.H @ self.x
+        v = np.random.multivariate_normal(np.zeros(self.R.shape[0]), self.R).reshape((self.m,1))
+        v[25:] = 0 # Set measurement noise of t0 data to 0.
+        y = z - self.H @ self.x + v
         S = self.R + self.H @ self.P @ self.H.T
         K = self.P @ self.H.T @ np.linalg.inv(S)
         self.x = self.x + K @ y
@@ -45,14 +47,14 @@ class KalmanFilter(object):
         predictions_cov = [self.P]
         
         for z in observations:
-            z = z.reshape(3,1)
+            z = z.reshape(self.m,1)
             if np.isnan(z).any():# all the missing values
                 
                 if not predictions_state: #if predictions are empty, meaning that the first observation is empty i.e. the first va
-                    z = np.array([2,2,2]).reshape(3,1)
+                    z = np.array(np.full(self.m,2)).reshape(self.m,1)
                 else:
                     expected_mean = np.random.normal(predictions_state[-1],predictions_cov[-1]) # sampling from the last observed step
-                    z = H @ expected_mean #from latent to observed state
+                    z = self.H @ expected_mean #from latent to observed state
 
             self.update(z)
             predictions_dummy, prediction_dummy_cov = self.predict()
@@ -84,4 +86,4 @@ class KalmanFilter(object):
             P_smooth[k] = predictions_cov[k] + np.dot(np.dot(K[k], P_smooth[k+1] - P_pred), K[k].T)
         
         return x_smooth, P_smooth, K #    -> what do we do with K?
-x
+
