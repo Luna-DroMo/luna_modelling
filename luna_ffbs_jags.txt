@@ -1,0 +1,35 @@
+# Kalman filter implementation in JAGS
+
+model {
+
+    # Define priors for the initial state
+    mu[1] ~ dnorm(0, 1.0E-6)  # Prior mean for initial state
+    sigma2[1] ~ dgamma(0.001, 0.001)  # Prior variance for initial state
+
+    # Iterate over time steps
+    for (t in 1:T) {
+    
+        ############# Predict Function ##############
+        
+        # Mean of next state
+        z_mu[t+1] <- F %*% z_mu[t]
+        # Cov of next state
+        P[t+1] <- F %*% P[t] %*% t(P[t]) + Q
+        
+        z[t+1] ~ dnorm(z_mu[t+1], 1 / P(t+1)) # dnorm with precision
+        
+        ############# Update Function ##############
+        
+        error <- y[t,:] - H %*% z_[t] # Error between obs and state
+        S <- R + H %*% P[t] %*% t(H) # Update S (what is S exactly?)
+        K <- P %*% t(H) %*% inverse(S) # Calculate Gain
+        
+        # Update state mean
+        z[t] <- z[t] + K %*% error 
+        # Update state cov
+        I <- identity(1)
+        P[t] <- (I - K %*% H) %*% P %*% t(I - K %*% H) + K %*% R @ t(K)
+          
+    }
+    
+}    

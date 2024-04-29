@@ -1,0 +1,31 @@
+model {
+    
+    # For each person
+    for (i in 1:N) {
+      for (t in 1:1) {
+        # Priors
+        state[i,t] ~ dnorm(50, 1e-6)  # Prior for initial state
+      }
+      
+      # Transition model
+      for (t in 2:T) {
+          state[i,t] ~ dnorm(state[i, t - 1], sigma_transition)  # Transition model
+      }
+    
+      # Likelihood
+      for (t in 1:T) {
+          y[i, t, ] ~ dmnorm(H * state[i, t], precision_observation)
+      }
+    }
+
+    # Hyperparameters
+    sigma_transition ~ dunif(0, 1000)  # Uniform prior for transition standard deviation
+    
+    # Measurement model matrix H (static)
+    H[1] <- 1
+    for (k in 2:K) {
+        H[k] ~ dnorm(0, 1e-6)  # Prior for elements of H
+        
+    }
+  
+}
